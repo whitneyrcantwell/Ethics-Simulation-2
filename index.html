@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Supplier — Ethics Simulation 2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap');
+
+  :root {
+    --red:      #9B2335;
+    --red-dark: #6e1a26;
+    --red-glow: rgba(155,35,53,0.18);
+    --bg:       #0f0e0d;
+    --surface:  #1a1817;
+    --card:     #201e1c;
+    --border:   #2e2b28;
+    --text:     #ede8e1;
+    --muted:    #8a847b;
+    --gold:     #c9a84c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── PROGRESS BAR ── */
+  #progress-bar-wrap {
+    position: fixed; top: 0; left: 0; right: 0; height: 4px;
+    background: var(--border); z-index: 100;
+  }
+  #progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--red-dark), var(--red));
+    transition: width 0.6s ease;
+  }
+
+  /* ── SHELL ── */
+  .shell {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 60px 24px 80px;
+  }
+
+  /* ── HEADER ── */
+  .sim-header {
+    text-align: center;
+    margin-bottom: 48px;
+    padding-top: 20px;
+  }
+  .sim-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .sim-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.15;
+    margin-bottom: 10px;
+  }
+  .sim-subtitle {
+    font-size: 15px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    width: 48px; height: 2px;
+    background: var(--red);
+    margin: 24px auto;
+  }
+
+  /* ── START SCREEN ── */
+  .start-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 40px 44px;
+    margin-bottom: 28px;
+  }
+  .start-intro {
+    font-size: 15.5px;
+    color: var(--text);
+    line-height: 1.75;
+    margin-bottom: 32px;
+  }
+  .start-intro p + p { margin-top: 14px; }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .field-group label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .field-group input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 15px;
+    padding: 11px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .field-group input:focus { border-color: var(--red); }
+  .field-group input.error-input { border-color: #e05555; }
+
+  .error-msg {
+    font-size: 13px;
+    color: #e05555;
+    margin-top: 6px;
+    display: none;
+  }
+
+  /* ── RULES BOX ── */
+  .rules-box {
+    background: var(--surface);
+    border-left: 3px solid var(--red);
+    border-radius: 0 3px 3px 0;
+    padding: 18px 22px;
+    margin-bottom: 32px;
+  }
+  .rules-box p {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .rules-box p + p { margin-top: 8px; }
+
+  /* ── BUTTONS ── */
+  .btn-primary {
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 14px 32px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    display: inline-block;
+  }
+  .btn-primary:hover { background: var(--red-dark); }
+  .btn-primary:active { transform: scale(0.98); }
+
+  /* ── SCENE CARD ── */
+  .scene-wrap { animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  .scene-label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 600;
+    margin-bottom: 18px;
+  }
+  .scene-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 36px 40px;
+    margin-bottom: 28px;
+  }
+  .scene-headline {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 20px;
+    line-height: 1.3;
+  }
+  .scene-body {
+    font-size: 15.5px;
+    line-height: 1.78;
+    color: var(--text);
+  }
+  .scene-body p + p { margin-top: 14px; }
+
+  /* memo / document styles */
+  .memo {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 20px 24px;
+    margin: 20px 0;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .memo strong { color: var(--text); font-weight: 600; }
+  .memo .memo-header {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .quote-block {
+    border-left: 3px solid var(--gold);
+    padding: 12px 20px;
+    margin: 20px 0;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  /* ── CHOICES ── */
+  .choice-label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .choices { display: flex; flex-direction: column; gap: 12px; }
+  .choice-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 15px;
+    padding: 18px 22px;
+    text-align: left;
+    transition: border-color 0.2s, background 0.2s;
+    line-height: 1.55;
+    width: 100%;
+  }
+  .choice-btn:hover {
+    border-color: var(--red);
+    background: var(--card);
+  }
+  .choice-btn .choice-letter {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--red);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  /* ── BRIDGE ── */
+  .bridge-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    border-radius: 0 3px 3px 0;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    font-size: 14.5px;
+    color: var(--muted);
+    line-height: 1.7;
+    animation: fadeIn 0.35s ease;
+  }
+  .bridge-card strong { color: var(--text); }
+
+  /* ── SCORE ── */
+  .score-bar-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    height: 6px;
+    overflow: hidden;
+    margin: 16px 0 8px;
+  }
+  .score-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--red-dark), var(--red));
+    border-radius: 40px;
+    transition: width 0.7s ease;
+  }
+
+  /* ── CERTIFICATE ── */
+  .cert-wrap {
+    animation: fadeIn 0.5s ease;
+  }
+  .cert-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 48px 52px;
+    margin-bottom: 28px;
+    text-align: center;
+  }
+  .cert-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 600;
+    margin-bottom: 20px;
+  }
+  .cert-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.3rem;
+    color: var(--muted);
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .cert-name {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .cert-simulation {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 32px;
+  }
+  .cert-score-ring {
+    width: 110px; height: 110px;
+    border-radius: 50%;
+    border: 3px solid var(--red);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    margin: 0 auto 32px;
+  }
+  .cert-score-num {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+  .cert-score-pts {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .cert-grade-badge {
+    display: inline-block;
+    border: 1px solid var(--red);
+    color: var(--red);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 6px 18px;
+    border-radius: 2px;
+    margin-bottom: 28px;
+  }
+  .cert-path {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+  .cert-divider { width: 40px; height: 1px; background: var(--border); margin: 28px auto; }
+  .cert-code-label {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .cert-code {
+    font-family: 'Courier New', monospace;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--red);
+    letter-spacing: 0.12em;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: inline-block;
+    padding: 10px 24px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+  }
+  .cert-code-note {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* reflection card */
+  .reflection-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 3px 3px 0;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    font-size: 14.5px;
+    line-height: 1.75;
+    color: var(--text);
+  }
+  .reflection-card .reflection-label {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  /* summary table */
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 20px 0;
+  }
+  .summary-table th {
+    text-align: left;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .summary-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .summary-table td:last-child { color: var(--red); font-weight: 700; }
+
+  /* print actions */
+  .print-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--red);
+    color: var(--red);
+    border-radius: 3px;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 12px 26px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-outline:hover { background: var(--red); color: #fff; }
+
+  /* submission note */
+  .submit-note {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 20px 24px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .submit-note strong { color: var(--text); }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background: #fff !important; color: #111 !important; }
+    #progress-bar-wrap { display: none; }
+    .btn-primary, .btn-outline, .print-row, .submit-note { display: none !important; }
+    .cert-card {
+      background: #fff !important;
+      border: 1px solid #ccc !important;
+      color: #111 !important;
+    }
+    .cert-name, .cert-score-num, .cert-code { color: #9B2335 !important; }
+    .cert-title, .cert-simulation, .cert-path, .cert-code-note,
+    .cert-code-label, .cert-score-pts { color: #555 !important; }
+    .cert-score-ring { border-color: #9B2335 !important; }
+    .cert-grade-badge { border-color: #9B2335 !important; color: #9B2335 !important; }
+    .reflection-card {
+      border-color: #ccc !important;
+      background: #f9f9f9 !important;
+      color: #111 !important;
+    }
+    .reflection-card .reflection-label { color: #7a6020 !important; }
+    .summary-table th { color: #555 !important; }
+    .summary-table td { color: #111 !important; }
+    .summary-table td:last-child { color: #9B2335 !important; }
+  }
+
+  @media (max-width: 580px) {
+    .shell { padding: 48px 16px 60px; }
+    .start-card, .scene-card, .cert-card { padding: 28px 22px; }
+    .field-row { grid-template-columns: 1fr; }
+    .cert-card { padding: 36px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+
+<div class="shell" id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIG — update SHEET_URL before deploying
+// ═══════════════════════════════════════════════
+let SHEET_URL = '';
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let firstName = '';
+let lastName  = '';
+let totalScore = 0;
+let choiceLog  = [];
+let completionCode = '';
+
+const TOTAL_DECISIONS = 4;
+const PTS_PER = 25;
+
+// ═══════════════════════════════════════════════
+//  SCENES
+// ═══════════════════════════════════════════════
+const scenes = [
+
+  // ── SCENE 0: INTRO ──────────────────────────
+  {
+    id: 'intro',
+    progress: 14,
+    render(state) {
+      return `
+        <div class="scene-wrap">
+          <div class="scene-label">Simulation 2 — The Supplier</div>
+          <div class="scene-card">
+            <div class="scene-headline">Your first real test</div>
+            <div class="scene-body">
+              <p>You are <strong>Alex Rivera</strong>, a junior buyer at <strong>StepUp Athletics</strong> — a mid-size athletic footwear and apparel brand with a loyal customer base built around the idea of "doing things right."</p>
+              <p>You've been on the job for eight months. You care about it. You want to do well.</p>
+              <p>This morning, your manager forwarded you a confidential internal audit flagged as urgent. It concerns <strong>MegaStep Manufacturing</strong> — StepUp's primary overseas supplier and the source of roughly 60% of your product line.</p>
+              <p>You open it.</p>
+            </div>
+
+            <div class="memo" style="margin-top:28px;">
+              <div class="memo-header">Confidential — Internal Audit Summary</div>
+              <p><strong>Subject:</strong> MegaStep Manufacturing — Compliance Review</p>
+              <p style="margin-top:10px;"><strong>Findings:</strong></p>
+              <ul style="margin:10px 0 0 18px; line-height:1.9;">
+                <li>Workers paid approximately <strong>28% below</strong> local minimum wage</li>
+                <li>Documented 14-hour shifts with no overtime compensation</li>
+                <li>Two safety violations flagged — neither reported to local regulators</li>
+                <li>Three prior audits were <strong>pre-announced</strong>; records show temporary conditions were staged for inspectors</li>
+              </ul>
+              <p style="margin-top:12px; font-style:italic;">This supplier currently provides 60% of StepUp's active product line. Contract renewal is due in 45 days.</p>
+            </div>
+
+            <div class="scene-body" style="margin-top:20px;">
+              <p>You sit with this for a moment. Then the phone rings. It's your manager, Director of Sourcing <strong>Mark Donovan</strong>.</p>
+              <p><em>"You saw the audit. Before you do anything — come talk to me."</em></p>
+            </div>
+          </div>
+
+          <div class="choice-label">How do you approach the meeting?</div>
+          <div class="choices">
+            <button class="choice-btn" onclick="choose(0,'A',25,'You walk in ready to flag every concern. These findings are serious and someone needs to say so.')">
+              <span class="choice-letter">Option A</span>
+              You walk in prepared to raise every concern directly. These findings are serious, and you intend to say so regardless of what Mark's position is.
+            </button>
+            <button class="choice-btn" onclick="choose(0,'B',15,'You want to hear Mark out first. Maybe there is more context. You keep your concerns ready but wait to see the full picture.')">
+              <span class="choice-letter">Option B</span>
+              You want to hear Mark out first. Maybe there's context you're missing. You keep your concerns ready but lead with listening.
+            </button>
+            <button class="choice-btn" onclick="choose(0,'C',5,'Mark is your boss. You go in ready to follow his lead. You're eight months in — this isn't your call to make.')">
+              <span class="choice-letter">Option C</span>
+              Mark is your boss. You go in ready to follow his lead — you're eight months in, and this feels above your pay grade.
+            </button>
+          </div>
+        </div>`;
+    }
+  },
+
+  // ── SCENE 1: MARK'S OFFICE ───────────────────
+  {
+    id: 'mark',
+    progress: 30,
+    render(state) {
+      const last = state.lastChoice;
+      let bridge = '';
+      if (last === 'A') bridge = `<div class="bridge-card"><strong>You go in ready.</strong> You have the audit open on your phone and three specific questions prepared. You are not here to be managed away from this.</div>`;
+      if (last === 'B') bridge = `<div class="bridge-card"><strong>You listen first.</strong> Mark seems tense. You notice he's already closed his office door before you've said a word.</div>`;
+      if (last === 'C') bridge = `<div class="bridge-card"><strong>You go in neutral.</strong> Mark is your manager. You trust the chain of command. But as you sit down, something about his expression makes you uneasy.</div>`;
+
+      return `
+        <div class="scene-wrap">
+          ${bridge}
+          <div class="scene-label">Decision 2 of 4</div>
+          <div class="scene-card">
+            <div class="scene-headline">Mark makes the situation clear</div>
+            <div class="scene-body">
+              <p>Mark leans back and chooses his words carefully.</p>
+
+              <div class="quote-block">
+                "Look — I've seen audits like this before. Every overseas supplier has issues if you dig hard enough. MegaStep has been our partner for six years. We pull their contract today, we lose 60% of our supply chain in the middle of a contract cycle. Legal says we're not technically in violation of anything on our end. My read is: we acknowledge, we document, we continue the relationship."
+              </div>
+
+              <p>He slides a draft letter across the desk. It's addressed to MegaStep's operations director. It acknowledges the audit in vague terms, expresses "confidence in the partnership," and requests a follow-up meeting — with no timeline and no binding requirements.</p>
+
+              <p>He wants your signature on it too. <em>"Shows we're aligned,"</em> he says.</p>
+            </div>
+          </div>
+
+          <div class="choice-label">What do you do?</div>
+          <div class="choices">
+            <button class="choice-btn" onclick="choose(1,'A',25,'You tell Mark you can't sign this letter. It asks for nothing and commits to nothing. You propose a different approach — a formal improvement plan with timelines and third-party verification.')">
+              <span class="choice-letter">Option A</span>
+              You tell Mark you can't sign this letter as written. It asks for nothing and commits to nothing. You propose an alternative: a formal improvement notice with specific requirements, timelines, and independent verification.
+            </button>
+            <button class="choice-btn" onclick="choose(1,'B',15,'You push back on the lack of timeline, get one vague commitment added, and sign. You feel uneasy — but you tell yourself you raised the concern.')">
+              <span class="choice-letter">Option B</span>
+              You push back enough to get one vague commitment added to the letter, then sign. You're uncomfortable — but you tell yourself you raised your concern.
+            </button>
+            <button class="choice-btn" onclick="choose(1,'C',5,'You sign. Mark is the director. The company is not technically liable. You don't want to be the person who blew up a six-year supplier relationship over an audit.')">
+              <span class="choice-letter">Option C</span>
+              You sign the letter. Mark is the director, the company isn't technically liable, and you don't want to be the one who blew up a six-year partnership in your first year.
+            </button>
+          </div>
+        </div>`;
+    }
+  },
+
+  // ── SCENE 2: THE STAKEHOLDER RECKONING ───────
+  {
+    id: 'stakeholder',
+    progress: 54,
+    render(state) {
+      const last = state.lastChoice;
+      let bridge = '';
+      if (last === 'A') bridge = `<div class="bridge-card"><strong>Mark is unhappy.</strong> But he doesn't override you — not yet. He says he'll "think about the approach." Meanwhile, a situation develops that makes the stakes clearer.</div>`;
+      if (last === 'B') bridge = `<div class="bridge-card"><strong>The letter goes out.</strong> You told yourself you did something. But two days later, you receive a message that reframes everything.</div>`;
+      if (last === 'C') bridge = `<div class="bridge-card"><strong>The letter goes out.</strong> Mark thanks you. A week later, a journalist contacts StepUp's PR team. A story is in progress.</div>`;
+
+      return `
+        <div class="scene-wrap">
+          ${bridge}
+          <div class="scene-label">Decision 3 of 4</div>
+          <div class="scene-card">
+            <div class="scene-headline">A worker's name</div>
+            <div class="scene-body">
+              <p>An anonymous message arrives through StepUp's ethics tip line — routed to you because your name was on the MegaStep correspondence.</p>
+
+              <div class="memo">
+                <div class="memo-header">Anonymous Submission — Ethics Hotline</div>
+                <p>"My name is Dian. I have worked at MegaStep for four years. Last month I asked my supervisor about the wage difference I noticed on my pay stub. Two days later I was moved to the worst shift. I know others are afraid to speak. I heard StepUp sends people to check on us. Please — we need someone to actually look."</p>
+              </div>
+
+              <p>This is no longer an abstract audit. There is a name, a face, and a direct request.</p>
+              <p>You are not the head of HR. You are not the CEO. But you received this message, and you have to decide what to do with it.</p>
+            </div>
+          </div>
+
+          <div class="choice-label">What do you do with this message?</div>
+          <div class="choices">
+            <button class="choice-btn" onclick="choose(2,'A',25,'You forward it to HR and legal, write a memo documenting it, and formally request that it be included in any ongoing MegaStep review. You also respond to acknowledge receipt.')">
+              <span class="choice-letter">Option A</span>
+              You forward it immediately to HR and Legal, write a memo documenting your receipt and actions, and formally request that it be incorporated into any MegaStep review. You send a brief acknowledgment to the tip line.
+            </button>
+            <button class="choice-btn" onclick="choose(2,'B',15,'You forward it to Mark and let him decide how to handle it. You document that you received and forwarded it.')">
+              <span class="choice-letter">Option B</span>
+              You forward it to Mark and let him decide how to handle it. You document that you received and forwarded the message.
+            </button>
+            <button class="choice-btn" onclick="choose(2,'C',5,'You file it. The tip line exists for a reason — it will go to the right place. Getting more involved feels like it could make things worse.')">
+              <span class="choice-letter">Option C</span>
+              You file it and assume the tip line system will route it appropriately. Getting more involved personally feels like it could complicate things.
+            </button>
+          </div>
+        </div>`;
+    }
+  },
+
+  // ── SCENE 3: THE MEETING ────────────────────
+  {
+    id: 'meeting',
+    progress: 76,
+    render(state) {
+      const last = state.lastChoice;
+      let bridge = '';
+      if (last === 'A') bridge = `<div class="bridge-card"><strong>HR and Legal are now involved.</strong> The tip has elevated the situation. A cross-functional review is scheduled. The CEO wants a recommendation on the MegaStep relationship within the week.</div>`;
+      if (last === 'B') bridge = `<div class="bridge-card"><strong>Mark received the tip.</strong> He is not pleased you escalated it, even internally. But the combination of the audit and the tip has forced a formal review. You've been asked to present at it.</div>`;
+      if (last === 'C') bridge = `<div class="bridge-card"><strong>The tip routed eventually to HR.</strong> Combined with the original audit, a formal review was triggered anyway. You're asked to present your recommendation to the leadership team.</div>`;
+
+      return `
+        <div class="scene-wrap">
+          ${bridge}
+          <div class="scene-label">Decision 4 of 4</div>
+          <div class="scene-card">
+            <div class="scene-headline">The room is waiting</div>
+            <div class="scene-body">
+              <p>The meeting includes the CEO, the VP of Operations, Mark, Legal, and HR. It is the biggest room you've been in since starting the job.</p>
+              <p>You've been asked to give a brief recommendation on how StepUp should proceed with MegaStep. The CEO says, <em>"You've seen the most recent information. What do you think we should do?"</em></p>
+              <p>Here is what you know going into this moment:</p>
+              <ul style="margin:14px 0 0 20px; line-height:1.9; font-size:15px;">
+                <li>MegaStep workers are being underpaid and potentially retaliated against</li>
+                <li>StepUp's brand has built its identity around "doing things right"</li>
+                <li>The contract renewal is in 45 days</li>
+                <li>Qualifying a new supplier takes 4–6 months and carries real cost</li>
+                <li>One worker already came forward with a name and a request</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="choice-label">What is your recommendation?</div>
+          <div class="choices">
+            <button class="choice-btn" onclick="choose(3,'A',25,'You recommend binding improvement standards, a 90-day timeline, independent third-party verification, and clear consequences if unmet — including beginning supplier qualification in parallel.')">
+              <span class="choice-letter">Option A</span>
+              "We should issue binding improvement standards with a 90-day timeline and require independent third-party verification — not pre-announced. If MegaStep doesn't meet them, we begin qualifying an alternative supplier now, in parallel. Our brand says we do things right. This is what that actually costs."
+            </button>
+            <button class="choice-btn" onclick="choose(3,'B',15,'You recommend a formal improvement notice, a 6-month follow-up audit, and a review of the tip to determine if retaliation occurred. You stop short of threatening contract termination.')">
+              <span class="choice-letter">Option B</span>
+              "We should issue a formal improvement notice with a timeline, investigate the tip for retaliation, and schedule a third-party audit in six months. I'd recommend a hold on the contract renewal until we see progress."
+            </button>
+            <button class="choice-btn" onclick="choose(3,'C',5,'You recommend continuing the relationship with a memo of understanding and a scheduled review — but no binding conditions and no contract hold. You emphasize the business disruption risk of changing suppliers.')">
+              <span class="choice-letter">Option C</span>
+              "Given the supply chain risk, I'd recommend continuing the relationship with a memo of understanding and a scheduled review in six months. The cost of switching suppliers right now is significant."
+            </button>
+          </div>
+        </div>`;
+    }
+  }
+];
+
+// ═══════════════════════════════════════════════
+//  SCORE → GRADE / PATH LABEL
+// ═══════════════════════════════════════════════
+function gradeInfo(score) {
+  if (score >= 90) return { grade: 'A', label: 'Ethical Leadership', desc: 'You consistently identified the people most affected, named the stakes plainly, and made choices that prioritized their welfare — even when it was professionally costly. That is what ethical leadership actually looks like.' };
+  if (score >= 75) return { grade: 'B', label: 'Conscientious Consideration', desc: 'You raised real concerns and took some meaningful action. But at key moments, caution held you back from the clearest path. The gap between "I flagged it" and "I made sure something happened" is where most ethical failures occur.' };
+  if (score >= 55) return { grade: 'C', label: 'Partial Accountability', desc: 'You saw the problems but deferred when it mattered most. Deferring up the chain is not the same as having no responsibility. The workers in that factory were your company\'s stakeholders too — and they needed more than a filed memo.' };
+  if (score >= 40) return { grade: 'D', label: 'Ethical Fading', desc: 'At nearly every turn, you chose the path that avoided personal risk at the expense of those most affected. This is called ethical fading — the gradual normalization of choices that, taken together, cause real harm. There is always another chance to start differently.' };
+  return { grade: 'F', label: 'Unchecked Harm', desc: 'Every decision in this simulation protected your comfort at the direct expense of people who had no voice and no power. That pattern — repeated across a career — is how institutions fail. The good news: you can run this again. The harder question is whether you would make the same choices in a real building, with a real person\'s name on a tip line.' };
+}
+
+// ═══════════════════════════════════════════════
+//  CODE GENERATOR
+//  Format: SIM2-{INITIALS}-{CHOICES}-{SCORE HEX}-{TIMESTAMP}
+//  Example: SIM2-AR-AABC-64-XY7Z
+//  The CHOICES segment carries Alex's four decisions forward to Sim 3.
+// ═══════════════════════════════════════════════
+function genCode(first, last, score) {
+  const initials   = (first[0] || 'X').toUpperCase() + (last[0] || 'X').toUpperCase();
+  const ts         = Date.now().toString(36).toUpperCase().slice(-4);
+  const scoreHex   = score.toString(16).toUpperCase().padStart(2,'0');
+  // Extract just the letter from each log entry e.g. "D1:A(25pts)" → "A"
+  const choices    = choiceLog.map(c => c.split(':')[1][0]).join('');
+  return `SIM2-${initials}-${choices}-${scoreHex}-${ts}`;
+}
+
+// ═══════════════════════════════════════════════
+//  CODE DECODER (for use by Sim 3)
+//  Pass a SIM2 code string; returns { initials, choices, score }
+//  choices is an array like ['A','A','B','C']
+// ═══════════════════════════════════════════════
+function decodeCode(code) {
+  try {
+    const parts = code.trim().toUpperCase().split('-');
+    // parts: [SIM2, INITIALS, CHOICES, SCOREHEX, TS]
+    if (parts.length !== 5 || parts[0] !== 'SIM2') return null;
+    return {
+      initials: parts[1],
+      choices:  parts[2].split(''),   // ['A','A','B','C']
+      score:    parseInt(parts[3], 16)
+    };
+  } catch(e) { return null; }
+}
+
+// ═══════════════════════════════════════════════
+//  PROGRESS BAR
+// ═══════════════════════════════════════════════
+function setProgress(pct) {
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+// ═══════════════════════════════════════════════
+//  SUBMIT TO SHEET
+// ═══════════════════════════════════════════════
+function submitToSheet() {
+  if (!SHEET_URL) return;
+  const info = gradeInfo(totalScore);
+  const params = new URLSearchParams({
+    sim:       'supplier',
+    firstName: firstName,
+    lastName:  lastName,
+    score:     totalScore,
+    pct:       Math.round((totalScore / 100) * 100) + '%',
+    grade:     info.grade,
+    path:      info.label,
+    choices:   choiceLog.join(' | '),
+    code:      completionCode,
+    timestamp: new Date().toLocaleString()
+  });
+  fetch(SHEET_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' }).catch(() => {});
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER FUNCTIONS
+// ═══════════════════════════════════════════════
+let currentScene = -1;
+let lastChoice = '';
+
+function renderStart() {
+  setProgress(0);
+  document.getElementById('app').innerHTML = `
+    <div class="sim-header">
+      <div class="sim-eyebrow">The Line — Business Ethics</div>
+      <h1 class="sim-title">The Supplier</h1>
+      <div class="sim-subtitle">Ethics Simulation 2 — Stakeholders &amp; Responsibility</div>
+      <div class="divider"></div>
+    </div>
+
+    <div class="start-card">
+      <div class="start-intro">
+        <p>In this simulation you will step into a workplace scenario involving real ethical pressure — competing interests, institutional inertia, and a direct request from someone who needs you to act.</p>
+        <p>There are no trick questions. Read carefully, trust your instincts, and make the choice you can actually defend. Your decisions will be scored and reflected back to you at the end.</p>
+        <p>You will need to submit your <strong>completion code</strong> to Canvas to receive credit for this assignment.</p>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label for="fn">First Name</label>
+          <input type="text" id="fn" placeholder="First name" autocomplete="given-name">
+        </div>
+        <div class="field-group">
+          <label for="ln">Last Name</label>
+          <input type="text" id="ln" placeholder="Last name" autocomplete="family-name">
+        </div>
+      </div>
+      <div class="error-msg" id="name-err">Please enter both your first and last name to continue.</div>
+
+      <div class="rules-box" style="margin-top:24px;">
+        <p>⏱ This simulation takes approximately 15–20 minutes.</p>
+        <p>📄 At the end you will receive a certificate with a unique completion code. Save it as a PDF or take a screenshot — that is what you submit to Canvas.</p>
+        <p>🔄 You may run the simulation more than once. Submit your best or most honest run.</p>
+      </div>
+
+      <button class="btn-primary" onclick="startSim()">Begin Simulation ↗</button>
+    </div>
+  `;
+}
+
+function startSim() {
+  const fn = document.getElementById('fn').value.trim();
+  const ln = document.getElementById('ln').value.trim();
+  if (!fn || !ln) {
+    document.getElementById('name-err').style.display = 'block';
+    if (!fn) document.getElementById('fn').classList.add('error-input');
+    if (!ln) document.getElementById('ln').classList.add('error-input');
+    return;
+  }
+  firstName = fn;
+  lastName  = ln;
+  totalScore = 0;
+  choiceLog  = [];
+  currentScene = 0;
+  lastChoice = '';
+  renderScene(0);
+}
+
+function renderScene(idx) {
+  if (idx >= scenes.length) { renderCertificate(); return; }
+  const scene = scenes[idx];
+  setProgress(scene.progress);
+  document.getElementById('app').innerHTML = `
+    <div class="sim-header" style="margin-bottom:32px;">
+      <div class="sim-eyebrow">The Line — Simulation 2</div>
+      <h1 class="sim-title">The Supplier</h1>
+      <div class="divider"></div>
+    </div>
+    ${scene.render({ lastChoice })}
+  `;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function choose(sceneIdx, letter, pts, summary) {
+  totalScore += pts;
+  choiceLog.push(`D${sceneIdx + 1}:${letter}(${pts}pts)`);
+  lastChoice = letter;
+  currentScene = sceneIdx + 1;
+
+  // brief transition
+  document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+  setTimeout(() => renderScene(currentScene), 280);
+}
+
+// ═══════════════════════════════════════════════
+//  CERTIFICATE
+// ═══════════════════════════════════════════════
+function renderCertificate() {
+  setProgress(100);
+  completionCode = genCode(firstName, lastName, totalScore);
+  const info = gradeInfo(totalScore);
+  const pct  = totalScore;
+  const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  // choice summary rows
+  const decisionLabels = [
+    'Approaching the meeting with Mark',
+    'Responding to the letter request',
+    'Handling the worker\'s tip',
+    'Your recommendation to leadership'
+  ];
+  const letters = choiceLog.map(c => c.split(':')[1].split('(')[0]);
+  const points  = choiceLog.map(c => parseInt(c.match(/\((\d+)pts\)/)[1]));
+  const summaryRows = decisionLabels.map((label, i) => `
+    <tr>
+      <td>${label}</td>
+      <td style="text-align:center;">${letters[i] || '—'}</td>
+      <td>${points[i] !== undefined ? points[i] + ' / 25' : '—'}</td>
+    </tr>`).join('');
+
+  // reflection prompt based on score
+  let reflectionPrompt = '';
+  if (totalScore >= 90) {
+    reflectionPrompt = `Your simulation results show a consistent pattern of identifying and acting on stakeholder interests — even under institutional pressure. For Discussion 2, reflect: <strong>What made it possible to act the way you did? What would have made it harder?</strong> Use the frameworks from Chapter 3 to name at least two stakeholder groups who would have been affected by a different set of choices.`;
+  } else if (totalScore >= 75) {
+    reflectionPrompt = `Your choices show genuine ethical awareness — but also the pull of deference and risk-avoidance. For Discussion 2, reflect: <strong>Where did caution override conscience, and why?</strong> Use Chapter 3's stakeholder framework to identify who bore the cost of the more cautious choices in this simulation.`;
+  } else if (totalScore >= 55) {
+    reflectionPrompt = `Your simulation path shows a pattern of partial action — awareness without full follow-through. For Discussion 2, reflect: <strong>What is the difference between acknowledging an ethical problem and taking responsibility for it?</strong> Reference at least one concept from Chapter 4 (CSR) and identify who the "diffused stakeholders" were in this scenario.`;
+  } else if (totalScore >= 40) {
+    reflectionPrompt = `Your choices in this simulation reflect what Chapter 4 calls <em>ethical fading</em> — the gradual normalization of inaction. For Discussion 2, reflect: <strong>At what point did you know something was wrong, and what stopped you from acting differently?</strong> Be honest. That moment of recognition is where ethics actually begins.`;
+  } else {
+    reflectionPrompt = `Every decision in this simulation chose personal safety over the welfare of people with no power to protect themselves. For Discussion 2, reflect — honestly: <strong>What would it have actually cost you to choose differently? And who paid the price for the choices you made?</strong> Use the concepts of stakeholder harm (Chapter 3) and ethical fading (Chapter 4) to analyze what happened here. This is not a failing grade to hide. It is the most important data point you have generated in this course so far.`;
+  }
+
+  submitToSheet();
+
+  document.getElementById('app').innerHTML = `
+    <div class="cert-wrap">
+      <div class="sim-header" style="margin-bottom:32px;">
+        <div class="sim-eyebrow">The Line — Simulation 2 Complete</div>
+        <h1 class="sim-title">Your Results</h1>
+        <div class="divider"></div>
+      </div>
+
+      <div class="cert-card" id="cert-printable">
+        <div class="cert-eyebrow">Certificate of Completion</div>
+        <div class="cert-title">This certifies that</div>
+        <div class="cert-name">${escHtml(firstName)} ${escHtml(lastName)}</div>
+        <div class="cert-simulation">completed The Supplier — Ethics Simulation 2 &nbsp;|&nbsp; ${dateStr}</div>
+
+        <div class="cert-score-ring">
+          <div class="cert-score-num">${totalScore}</div>
+          <div class="cert-score-pts">out of 100</div>
+        </div>
+
+        <div class="cert-grade-badge">Grade: ${info.grade} — ${info.label}</div>
+
+        <div class="cert-divider"></div>
+
+        <p style="font-size:14.5px; color:var(--muted); line-height:1.8; max-width:480px; margin:0 auto 24px;">${info.desc}</p>
+
+        <div class="cert-divider"></div>
+
+        <table class="summary-table" style="text-align:left; margin:0 auto 24px;">
+          <thead>
+            <tr>
+              <th>Decision</th>
+              <th style="text-align:center;">Choice</th>
+              <th>Points</th>
+            </tr>
+          </thead>
+          <tbody>${summaryRows}</tbody>
+          <tfoot>
+            <tr>
+              <td style="font-weight:700; color:var(--text);">Total Score</td>
+              <td></td>
+              <td style="font-weight:700; color:var(--red);">${totalScore} / 100</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div class="cert-divider"></div>
+
+        <div class="cert-code-label">Completion Code — Submit This to Canvas</div>
+        <div class="cert-code" id="cert-code-val">${completionCode}</div>
+        <div class="cert-code-note">This code is unique to your run and carries your decisions forward.<br>
+        <strong style="color:var(--text);">You will need it for Simulation 3.</strong> Save your PDF — do not lose this code.</div>
+      </div>
+
+      <div class="reflection-card">
+        <div class="reflection-label">Discussion 2 — Reflection Prompt</div>
+        <p>${reflectionPrompt}</p>
+      </div>
+
+      <div class="print-row">
+        <button class="btn-primary" onclick="window.print()">Save as PDF / Print Certificate</button>
+        <button class="btn-outline" onclick="renderStart()">Run Again</button>
+      </div>
+
+      <div class="submit-note" style="margin-top:20px;">
+        <strong>To submit:</strong> Click "Save as PDF / Print Certificate" above. In the print dialog, choose <strong>Save as PDF</strong> as your destination. Upload the PDF to the Canvas assignment for Simulation 2.
+        <br><br>Your completion code is: <strong>${completionCode}</strong>
+        <br><span style="color:#c9a84c; font-weight:600;">⚠ Keep this code.</span> Simulation 3 will ask you to enter it — your past decisions will shape Alex's story going forward.
+      </div>
+    </div>
+  `;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+renderStart();
+</script>
+</body>
+</html>
