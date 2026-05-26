@@ -244,6 +244,7 @@
     margin-bottom: 16px;
   }
   .choices { display: flex; flex-direction: column; gap: 12px; }
+
   .choice-btn {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -254,14 +255,30 @@
     font-size: 15px;
     padding: 18px 22px;
     text-align: left;
-    transition: border-color 0.2s, background 0.2s;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
     line-height: 1.55;
     width: 100%;
+    position: relative;
   }
-  .choice-btn:hover {
+  .choice-btn:hover:not(.selected):not(:disabled) {
     border-color: var(--red);
     background: var(--card);
   }
+
+  /* SELECTED state — first click highlights, does NOT advance */
+  .choice-btn.selected {
+    border-color: var(--red);
+    background: rgba(155, 35, 53, 0.10);
+    box-shadow: 0 0 0 1px var(--red);
+  }
+  .choice-btn.selected .choice-letter {
+    color: #fff;
+  }
+  /* Dim other buttons when one is selected */
+  .choice-btn.dimmed {
+    opacity: 0.4;
+  }
+
   .choice-btn .choice-letter {
     font-size: 11px;
     font-weight: 700;
@@ -270,7 +287,40 @@
     text-transform: uppercase;
     display: block;
     margin-bottom: 4px;
+    transition: color 0.15s;
   }
+
+  /* ── CONFIRM ROW ── */
+  .confirm-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 20px;
+    animation: fadeIn 0.25s ease;
+  }
+  .confirm-hint {
+    font-size: 13px;
+    color: var(--muted);
+    flex: 1;
+  }
+  .confirm-hint em { color: var(--text); font-style: normal; }
+  .btn-confirm {
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 12px 28px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .btn-confirm:hover { background: var(--red-dark); }
+  .btn-confirm:active { transform: scale(0.97); }
 
   /* ── BRIDGE ── */
   .bridge-card {
@@ -286,22 +336,6 @@
     animation: fadeIn 0.35s ease;
   }
   .bridge-card strong { color: var(--text); }
-
-  /* ── SCORE ── */
-  .score-bar-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 40px;
-    height: 6px;
-    overflow: hidden;
-    margin: 16px 0 8px;
-  }
-  .score-bar {
-    height: 100%;
-    background: linear-gradient(90deg, var(--red-dark), var(--red));
-    border-radius: 40px;
-    transition: width 0.7s ease;
-  }
 
   /* ── CERTIFICATE ── */
   .cert-wrap {
@@ -522,6 +556,7 @@
     .start-card, .scene-card, .cert-card { padding: 28px 22px; }
     .field-row { grid-template-columns: 1fr; }
     .cert-card { padding: 36px 24px; }
+    .confirm-row { flex-direction: column; align-items: flex-start; }
   }
 </style>
 </head>
@@ -545,6 +580,10 @@ let lastName  = '';
 let totalScore = 0;
 let choiceLog  = [];
 let completionCode = '';
+
+// Per-scene pending selection (letter, pts)
+let pendingLetter = null;
+let pendingPts    = null;
 
 const TOTAL_DECISIONS = 4;
 const PTS_PER = 25;
@@ -591,20 +630,21 @@ const scenes = [
           </div>
 
           <div class="choice-label">How do you approach the meeting?</div>
-          <div class="choices">
-            <button class="choice-btn" onclick="choose(0,'A',25,'You walk in ready to flag every concern. These findings are serious and someone needs to say so.')">
+          <div class="choices" id="choices-0">
+            <button class="choice-btn" data-letter="A" data-pts="25" onclick="selectChoice(0,this)">
               <span class="choice-letter">Option A</span>
               You walk in prepared to raise every concern directly. These findings are serious, and you intend to say so regardless of what Mark's position is.
             </button>
-            <button class="choice-btn" onclick="choose(0,'B',15,'You want to hear Mark out first. Maybe there is more context. You keep your concerns ready but wait to see the full picture.')">
+            <button class="choice-btn" data-letter="B" data-pts="15" onclick="selectChoice(0,this)">
               <span class="choice-letter">Option B</span>
               You want to hear Mark out first. Maybe there's context you're missing. You keep your concerns ready but lead with listening.
             </button>
-            <button class="choice-btn" onclick="choose(0,'C',5,'Mark is your boss. You go in ready to follow his lead. You're eight months in — this isn't your call to make.')">
+            <button class="choice-btn" data-letter="C" data-pts="5" onclick="selectChoice(0,this)">
               <span class="choice-letter">Option C</span>
               Mark is your boss. You go in ready to follow his lead — you're eight months in, and this feels above your pay grade.
             </button>
           </div>
+          <div id="confirm-row-0"></div>
         </div>`;
     }
   },
@@ -640,20 +680,21 @@ const scenes = [
           </div>
 
           <div class="choice-label">What do you do?</div>
-          <div class="choices">
-            <button class="choice-btn" onclick="choose(1,'A',25,'You tell Mark you can't sign this letter. It asks for nothing and commits to nothing. You propose a different approach — a formal improvement plan with timelines and third-party verification.')">
+          <div class="choices" id="choices-1">
+            <button class="choice-btn" data-letter="A" data-pts="25" onclick="selectChoice(1,this)">
               <span class="choice-letter">Option A</span>
               You tell Mark you can't sign this letter as written. It asks for nothing and commits to nothing. You propose an alternative: a formal improvement notice with specific requirements, timelines, and independent verification.
             </button>
-            <button class="choice-btn" onclick="choose(1,'B',15,'You push back on the lack of timeline, get one vague commitment added, and sign. You feel uneasy — but you tell yourself you raised the concern.')">
+            <button class="choice-btn" data-letter="B" data-pts="15" onclick="selectChoice(1,this)">
               <span class="choice-letter">Option B</span>
               You push back enough to get one vague commitment added to the letter, then sign. You're uncomfortable — but you tell yourself you raised your concern.
             </button>
-            <button class="choice-btn" onclick="choose(1,'C',5,'You sign. Mark is the director. The company is not technically liable. You don't want to be the person who blew up a six-year supplier relationship over an audit.')">
+            <button class="choice-btn" data-letter="C" data-pts="5" onclick="selectChoice(1,this)">
               <span class="choice-letter">Option C</span>
               You sign the letter. Mark is the director, the company isn't technically liable, and you don't want to be the one who blew up a six-year partnership in your first year.
             </button>
           </div>
+          <div id="confirm-row-1"></div>
         </div>`;
     }
   },
@@ -689,20 +730,21 @@ const scenes = [
           </div>
 
           <div class="choice-label">What do you do with this message?</div>
-          <div class="choices">
-            <button class="choice-btn" onclick="choose(2,'A',25,'You forward it to HR and legal, write a memo documenting it, and formally request that it be included in any ongoing MegaStep review. You also respond to acknowledge receipt.')">
+          <div class="choices" id="choices-2">
+            <button class="choice-btn" data-letter="A" data-pts="25" onclick="selectChoice(2,this)">
               <span class="choice-letter">Option A</span>
               You forward it immediately to HR and Legal, write a memo documenting your receipt and actions, and formally request that it be incorporated into any MegaStep review. You send a brief acknowledgment to the tip line.
             </button>
-            <button class="choice-btn" onclick="choose(2,'B',15,'You forward it to Mark and let him decide how to handle it. You document that you received and forwarded it.')">
+            <button class="choice-btn" data-letter="B" data-pts="15" onclick="selectChoice(2,this)">
               <span class="choice-letter">Option B</span>
               You forward it to Mark and let him decide how to handle it. You document that you received and forwarded the message.
             </button>
-            <button class="choice-btn" onclick="choose(2,'C',5,'You file it. The tip line exists for a reason — it will go to the right place. Getting more involved feels like it could make things worse.')">
+            <button class="choice-btn" data-letter="C" data-pts="5" onclick="selectChoice(2,this)">
               <span class="choice-letter">Option C</span>
               You file it and assume the tip line system will route it appropriately. Getting more involved personally feels like it could complicate things.
             </button>
           </div>
+          <div id="confirm-row-2"></div>
         </div>`;
     }
   },
@@ -739,24 +781,71 @@ const scenes = [
           </div>
 
           <div class="choice-label">What is your recommendation?</div>
-          <div class="choices">
-            <button class="choice-btn" onclick="choose(3,'A',25,'You recommend binding improvement standards, a 90-day timeline, independent third-party verification, and clear consequences if unmet — including beginning supplier qualification in parallel.')">
+          <div class="choices" id="choices-3">
+            <button class="choice-btn" data-letter="A" data-pts="25" onclick="selectChoice(3,this)">
               <span class="choice-letter">Option A</span>
               "We should issue binding improvement standards with a 90-day timeline and require independent third-party verification — not pre-announced. If MegaStep doesn't meet them, we begin qualifying an alternative supplier now, in parallel. Our brand says we do things right. This is what that actually costs."
             </button>
-            <button class="choice-btn" onclick="choose(3,'B',15,'You recommend a formal improvement notice, a 6-month follow-up audit, and a review of the tip to determine if retaliation occurred. You stop short of threatening contract termination.')">
+            <button class="choice-btn" data-letter="B" data-pts="15" onclick="selectChoice(3,this)">
               <span class="choice-letter">Option B</span>
               "We should issue a formal improvement notice with a timeline, investigate the tip for retaliation, and schedule a third-party audit in six months. I'd recommend a hold on the contract renewal until we see progress."
             </button>
-            <button class="choice-btn" onclick="choose(3,'C',5,'You recommend continuing the relationship with a memo of understanding and a scheduled review — but no binding conditions and no contract hold. You emphasize the business disruption risk of changing suppliers.')">
+            <button class="choice-btn" data-letter="C" data-pts="5" onclick="selectChoice(3,this)">
               <span class="choice-letter">Option C</span>
               "Given the supply chain risk, I'd recommend continuing the relationship with a memo of understanding and a scheduled review in six months. The cost of switching suppliers right now is significant."
             </button>
           </div>
+          <div id="confirm-row-3"></div>
         </div>`;
     }
   }
 ];
+
+// ═══════════════════════════════════════════════
+//  TWO-STEP SELECTION
+//  First click: highlight choice, show confirm bar
+//  Confirm click: commit and advance
+// ═══════════════════════════════════════════════
+function selectChoice(sceneIdx, btn) {
+  const letter = btn.dataset.letter;
+  const pts    = parseInt(btn.dataset.pts, 10);
+
+  // Update pending
+  pendingLetter = letter;
+  pendingPts    = pts;
+
+  // Visual: highlight selected, dim others
+  const container = document.getElementById('choices-' + sceneIdx);
+  container.querySelectorAll('.choice-btn').forEach(b => {
+    b.classList.remove('selected', 'dimmed');
+    if (b !== btn) b.classList.add('dimmed');
+  });
+  btn.classList.add('selected');
+
+  // Render confirm row
+  const confirmRow = document.getElementById('confirm-row-' + sceneIdx);
+  confirmRow.innerHTML = `
+    <div class="confirm-row">
+      <div class="confirm-hint">Selected <em>Option ${letter}</em> — change your mind by clicking another option, or confirm to continue.</div>
+      <button class="btn-confirm" onclick="commitChoice(${sceneIdx})">Confirm →</button>
+    </div>`;
+}
+
+function commitChoice(sceneIdx) {
+  if (pendingLetter === null) return;
+
+  totalScore += pendingPts;
+  choiceLog.push(`D${sceneIdx + 1}:${pendingLetter}(${pendingPts}pts)`);
+  lastChoice = pendingLetter;
+  pendingLetter = null;
+  pendingPts    = null;
+
+  // Disable everything to prevent double-fire
+  document.querySelectorAll('.choice-btn, .btn-confirm').forEach(b => b.disabled = true);
+
+  currentScene = sceneIdx + 1;
+  setTimeout(() => renderScene(currentScene), 280);
+}
 
 // ═══════════════════════════════════════════════
 //  SCORE → GRADE / PATH LABEL
@@ -771,32 +860,25 @@ function gradeInfo(score) {
 
 // ═══════════════════════════════════════════════
 //  CODE GENERATOR
-//  Format: SIM2-{INITIALS}-{CHOICES}-{SCORE HEX}-{TIMESTAMP}
-//  Example: SIM2-AR-AABC-64-XY7Z
-//  The CHOICES segment carries Alex's four decisions forward to Sim 3.
 // ═══════════════════════════════════════════════
 function genCode(first, last, score) {
   const initials   = (first[0] || 'X').toUpperCase() + (last[0] || 'X').toUpperCase();
   const ts         = Date.now().toString(36).toUpperCase().slice(-4);
   const scoreHex   = score.toString(16).toUpperCase().padStart(2,'0');
-  // Extract just the letter from each log entry e.g. "D1:A(25pts)" → "A"
   const choices    = choiceLog.map(c => c.split(':')[1][0]).join('');
   return `SIM2-${initials}-${choices}-${scoreHex}-${ts}`;
 }
 
 // ═══════════════════════════════════════════════
-//  CODE DECODER (for use by Sim 3)
-//  Pass a SIM2 code string; returns { initials, choices, score }
-//  choices is an array like ['A','A','B','C']
+//  CODE DECODER (for Sim 3)
 // ═══════════════════════════════════════════════
 function decodeCode(code) {
   try {
     const parts = code.trim().toUpperCase().split('-');
-    // parts: [SIM2, INITIALS, CHOICES, SCOREHEX, TS]
     if (parts.length !== 5 || parts[0] !== 'SIM2') return null;
     return {
       initials: parts[1],
-      choices:  parts[2].split(''),   // ['A','A','B','C']
+      choices:  parts[2].split(''),
       score:    parseInt(parts[3], 16)
     };
   } catch(e) { return null; }
@@ -889,6 +971,8 @@ function startSim() {
   lastName  = ln;
   totalScore = 0;
   choiceLog  = [];
+  pendingLetter = null;
+  pendingPts    = null;
   currentScene = 0;
   lastChoice = '';
   renderScene(0);
@@ -909,17 +993,6 @@ function renderScene(idx) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function choose(sceneIdx, letter, pts, summary) {
-  totalScore += pts;
-  choiceLog.push(`D${sceneIdx + 1}:${letter}(${pts}pts)`);
-  lastChoice = letter;
-  currentScene = sceneIdx + 1;
-
-  // brief transition
-  document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
-  setTimeout(() => renderScene(currentScene), 280);
-}
-
 // ═══════════════════════════════════════════════
 //  CERTIFICATE
 // ═══════════════════════════════════════════════
@@ -927,10 +1000,8 @@ function renderCertificate() {
   setProgress(100);
   completionCode = genCode(firstName, lastName, totalScore);
   const info = gradeInfo(totalScore);
-  const pct  = totalScore;
   const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  // choice summary rows
   const decisionLabels = [
     'Approaching the meeting with Mark',
     'Responding to the letter request',
@@ -946,7 +1017,6 @@ function renderCertificate() {
       <td>${points[i] !== undefined ? points[i] + ' / 25' : '—'}</td>
     </tr>`).join('');
 
-  // reflection prompt based on score
   let reflectionPrompt = '';
   if (totalScore >= 90) {
     reflectionPrompt = `Your simulation results show a consistent pattern of identifying and acting on stakeholder interests — even under institutional pressure. For Discussion 2, reflect: <strong>What made it possible to act the way you did? What would have made it harder?</strong> Use the frameworks from Chapter 3 to name at least two stakeholder groups who would have been affected by a different set of choices.`;
